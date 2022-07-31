@@ -1,39 +1,29 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\API;
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use App\Models\Article;
-use App\Models\Category;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class ArticlesController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function index()
     {
-        $articles = Article::paginate(10);
-
-        return view('pages.articles.index', compact('articles'));
+        return Article::with(['category', 'user'])->simplePaginate(10);
     }
 
-    public function show($id)
-    {
-        $article = Article::findOrFail($id);
-
-        return view('pages.articles.show', compact('article'));
-    }
-
-    public function create()
-    {
-        $categories = Category::all()->pluck('name', 'id')->toArray();
-
-        if (count($categories) == 0) {
-            return redirect()->route('categories.create');
-        }
-
-        return view('pages.articles.create', compact('categories'));
-    }
-
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
     public function store(Request $request)
     {
         $rules = [
@@ -53,20 +43,30 @@ class ArticlesController extends Controller
             $input['image'] = $filename;
         }
 
-        Article::create($input);
+        $post = Article::create($input);
 
-        return redirect('articles');
+        return response()->json($post, 201);
     }
 
-    public function edit($id)
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Article  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Article $post)
     {
-        $article = Article::findOrFail($id);
-        $categories = Category::all()->pluck('name', 'id')->toArray();
-
-        return view('pages.articles.edit', compact('article', 'categories'));
+        return $post;
     }
 
-    public function update(Request $request, $id)
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Article  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Article $post)
     {
         $rules = [
             'title'         => 'required',
@@ -77,12 +77,11 @@ class ArticlesController extends Controller
         ];
 
         $input = $request->validate($rules);
-        $article = Article::findOrFail($id);
 
         if ($request->hasFile('image') && $request->image != '') {
             // remove old image
-            if ($article->image != null) {
-                $file_path = storage_path() . '/app/public/articles/' . $article->image;
+            if ($post->image != null) {
+                $file_path = storage_path() . '/app/public/articles/' . $post->image;
                 unlink($file_path); //delete from storage
             }
 
@@ -92,22 +91,26 @@ class ArticlesController extends Controller
             $input['image'] = $filename;
         }
 
-        $article->update($input);
+        $post->update($input);
 
-        return redirect('articles');
+        return response()->json($post, 200);
     }
 
-    public function destroy($id)
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Models\Article  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Article $post)
     {
-        $article = Article::findOrFail($id);
-
-        if ($article->image != null) {
-            $file_path = storage_path() . '/app/public/articles/' . $article->image;
+        if ($post->image != null) {
+            $file_path = storage_path() . '/app/public/articles/' . $post->image;
             unlink($file_path); //delete from storage
         }
 
-        $article->delete();
+        $post->delete();
 
-        return redirect('articles');
+        return response()->json(null, 204);
     }
 }
